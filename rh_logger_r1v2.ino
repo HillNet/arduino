@@ -124,12 +124,14 @@ void setup_bme280()
   bme280.settings.commInterface = I2C_MODE;
   bme280.settings.I2CAddress = 0x76;
   bme280.settings.runMode = 3; //Normal mode
-  bme280.settings.tStandby = 0;
-  bme280.settings.filter = 0;
-  bme280.settings.tempOverSample = 1;
-  bme280.settings.pressOverSample = 1;
-  bme280.settings.humidOverSample = 1;
-
+  //Standby can be:  0, 0.5ms - 1, 62.5ms - 2, 125ms -  3, 250ms - 4, 500ms - 5, 1000ms - 6, 10ms - 7, 20ms
+  bme280.settings.tStandby = 3;
+  bme280.settings.filter = 4;
+  //*OverSample can be: 0, skipped - 1 through 5, oversampling *1, *2, *4, *8, *16 respectively
+  bme280.settings.tempOverSample = 5;
+  bme280.settings.pressOverSample = 5;
+  bme280.settings.humidOverSample = 5;
+  
   Serial.begin(9600);
   //Calling .begin() causes the settings to be loaded
   delay(10);  //Make sure sensor had enough time to turn on. BME280 requires 2ms to start up.
