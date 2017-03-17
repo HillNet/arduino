@@ -12,28 +12,22 @@ SoftwareSerial Serial1(2, 3); // RX, TX
 #endif
 
 /*-----( Declare Constants and Pin Numbers )-----*/
-#define wifi_ssid "wifissid"
-#define wifi_password "wifipasswd"
-#define mqtt_server "xxx.xxx.xxx.xxx"
-#define mqtt_user "user"
-#define mqtt_password "passwd"
-#define tt "sensor/bme280/temperature/current"
-#define ht "sensor/bme280/humidity/current"
-#define pt "sensor/bme280/pressure/current"
+#define wifi_ssid "ssid"
+#define wifi_password "passwd"
+#define mqtt_server "192.16x.x.xx"
+#define mqtt_user "mqtt_user"
+#define mqtt_password "mqtt_passwd"
+#define tt "sensor/bme280/temperature"
+#define ht "sensor/bme280/humidity"
+#define pt "sensor/bme280/pressure"
 
 char hexChars[] = "0123456789ABCDEF";
 #define HEX_MSB(v) hexChars[(v & 0xf0) >> 4]
 #define HEX_LSB(v) hexChars[v & 0x0f]
 
 /*-----( Declare objects )-----*/
-// Setup a oneWire instance to communicate with any OneWire devices
-OneWire  ds[] = {
-  8
-};
-
-//OneWire  ds(8);  // on pin 3 (a 4.7K resistor is necessary)
-byte No_of_1Wire_Buses = sizeof(ds) / sizeof(ds[0]);  // Number of pins declared for OneWire = number of Buses
-byte this_1Wire_Bus = 0;  // OneWire Bus number that is currently processed
+// Setup a oneWire instance
+OneWire  ds(8);  // on pin 8 (a 4.7K resistor is necessary)
 
 // I2C Sensor
 BME280 bme280;
@@ -42,13 +36,6 @@ BME280 bme280;
 WiFiEspClient espClient;
 // Initialize mqtt server object
 PubSubClient client(espClient);
-
-byte mac[]    = {  0xDE, 0xED, 0xBA, 0xFE, 0xFE, 0xED };
-//byte ip[] = { 10, 0, 8, 34 }; //Comment out if you want DHCP also you need to modify Ethernet.begin(mac, ip)
-
-void callback(char* topic, byte* payload, unsigned int length) {
-  // handle message arrived
-}
 
 /*-----( Declare Variables )-----*/
 // Wifi radio's status
@@ -63,8 +50,6 @@ void setup() {
   setup_wifi();
   setup_bme280();
   client.setServer(mqtt_server, 1883);
-  //Serial.print("Number of defined 1-Wire buses: ");
-  //Serial.println(No_of_1Wire_Buses);
 
   // configure 3 RGB pins as outputs
   pinMode(red_led, OUTPUT);
@@ -116,7 +101,6 @@ void setup_wifi() {
   // you're connected now, so print out the data
   Serial.println("You're connected to the network\n");
   blink_blue();
-  delay(1000);
 }
 
 void setup_bme280()
@@ -131,10 +115,9 @@ void setup_bme280()
   bme280.settings.tempOverSample = 5;
   bme280.settings.pressOverSample = 5;
   bme280.settings.humidOverSample = 5;
-  
-  Serial.begin(9600);
+
   //Calling .begin() causes the settings to be loaded
-  delay(10);  //Make sure sensor had enough time to turn on. BME280 requires 2ms to start up.
+  delay(10);  //BME280 requires 2ms to start up.
   Serial.println(bme280.begin(), HEX);
 }
 
@@ -176,21 +159,11 @@ void loop() {
   byte addr[8];
   float celsius;
 
-  if ( !ds[this_1Wire_Bus].search(addr)) {
-    Serial.print("No more addresses for array element number: ");
-    Serial.println(this_1Wire_Bus);
-    Serial.print("\n");
-    //If all buses done, start all over again
-    if (this_1Wire_Bus >= (No_of_1Wire_Buses - 1)) {
-      this_1Wire_Bus = 0;
-    } else {
-      this_1Wire_Bus++;
-    }
-    ds[this_1Wire_Bus].reset_search();
-    
+  if ( !ds.search(addr)) {
+    Serial.println("No more addresses.\n");
+    ds.reset_search();
+
     //Start with bme280 temperature, as that data is needed for accurate compensation.
-    //Reading the temperature updates the compensators of the other functions
-    //in the background.
     float bme280_t = bme280.readTempC();
     Serial.println("BME280 device");
     Serial.print("  Temperature: ");
@@ -213,39 +186,27 @@ void loop() {
     Serial.println();
     blink_green();
     delay(1000);
-    
+
     Serial.println("Pausing between search's");
     delay(30000); //delay between finding all the sensors
     return;
   }
 
   Serial.println("Chip = DS18B20");
-  ds[this_1Wire_Bus].reset();
-  ds[this_1Wire_Bus].select(addr);
-  ds[this_1Wire_Bus].write(0x44, 1);        // start conversion, with parasite power on at the end
-  delay(1000);     // maybe 750ms is enough, maybe not
-  // we might do a ds.depower() here, but the reset will take care of it.
+  ds.reset();
+  ds.select(addr);
+  ds.write(0x44, 1);// start conversion, with parasite power on at the end
+  delay(1000);      // maybe 750ms is enough, maybe not
 
-  present = ds[this_1Wire_Bus].reset();
-  ds[this_1Wire_Bus].select(addr);
-  ds[this_1Wire_Bus].write(0xBE);         // Read Scratchpad
+  present = ds.reset();
+  ds.select(addr);
+  ds.write(0xBE);   // Read Scratchpad
 
-  Serial.print("  Data = ");
-  Serial.print(present, HEX);
-  Serial.print(" ");
-  for ( i = 0; i < 9; i++) {           // we need 9 bytes
-    data[i] = ds[this_1Wire_Bus].read();
-    Serial.print(data[i], HEX);
-    Serial.print(" ");
+  for ( i = 0; i < 9; i++) {  // we need 9 bytes
+    data[i] = ds.read();
   }
-  Serial.print(" CRC=");
-  Serial.print(OneWire::crc8(data, 8), HEX);
-  Serial.println();
 
   // Convert the data to actual temperature
-  // because the result is a 16 bit signed integer, it should
-  // be stored to an "int16_t" type, which is always 16 bits
-  // even when compiled on a 32 bit processor.
   int16_t raw = (data[1] << 8) | data[0];
   if (type_s) {
     raw = raw << 3; // 9 bit resolution default
@@ -259,17 +220,16 @@ void loop() {
     if (cfg == 0x00) raw = raw & ~7;  // 9 bit resolution, 93.75 ms
     else if (cfg == 0x20) raw = raw & ~3; // 10 bit res, 187.5 ms
     else if (cfg == 0x40) raw = raw & ~1; // 11 bit res, 375 ms
-    //// default is 12 bit resolution, 750 ms conversion time
+    // default is 12 bit resolution, 750 ms conversion time
   }
 
   celsius = (float)raw / 16.0;
   Serial.print("  Temperature = ");
   Serial.print(celsius);
   Serial.println(" Celsius\n");
-      
+
   //publish the temp now
-  //String strTopic = "/house/hardware/arduino/weather1/285A9282300F1/temperature/current";
-  char charTopic[] = "sensor/XXXXXXXXXXXXXXXX/temperature/current";
+  char charTopic[] = "sensor/XXXXXXXXXXXXXXXX/temperature";
   for (i = 0; i < 8; i++) {
     charTopic[7 + i * 2] = HEX_MSB(addr[i]); //7 is where the backlash before XXX starts
     charTopic[8 + i * 2] = HEX_LSB(addr[i]); //8 is plus one on the above
