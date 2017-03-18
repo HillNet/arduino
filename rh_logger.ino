@@ -52,42 +52,36 @@ void setup() {
 
 void blink_red() {
   digitalWrite(r_led, HIGH);
-  delay(1000);
+  delay(500);
   digitalWrite(r_led, LOW);
-  delay(1000);
+  delay(500);
 }
 
 void blink_green() {
   digitalWrite(g_led, HIGH);
-  delay(1000);
+  delay(500);
   digitalWrite(g_led, LOW);
-  delay(1000);
+  delay(500);
 }
 
 void blink_blue() {
   digitalWrite(b_led, HIGH);
-  delay(1000);
+  delay(500);
   digitalWrite(b_led, LOW);
-  delay(1000);
+  delay(500);
 }
 
 void setup_wifi() {
-  // initialize serial for ESP module
   Serial1.begin(9600);
-  // initialize ESP module
   WiFi.init(&Serial1);
-  // check for the presence of the shield
   if (WiFi.status() == WL_NO_SHIELD) {
     Serial.println("WiFi shield not present");
-    // don't continue
     while (true);
   }
-  // attempt to connect to WiFi network
   while ( status != WL_CONNECTED) {
-    Serial.print("Attempting to connect to WPA SSID: ");
-    Serial.println("HillNet_AP");
-    // Connect to WPA/WPA2 network
-    status = WiFi.begin("HillNet_AP", "wifi_passwd");
+    //Serial.print("Attempting to connect to WPA SSID: ");
+    //Serial.println("HillNet_AP");
+    status = WiFi.begin("HillNet_AP", "passwd");
   }
   Serial.println("You're connected to the network\n");
   blink_blue();
@@ -147,38 +141,38 @@ void loop() {
   float celsius;
 
   if ( !ds.search(addr)) {
-    Serial.println("No more addresses.\n");
+    //Serial.println("No more addresses.\n");
     ds.reset_search();
 
     //Start with bme280 temperature, as that data is needed for accurate compensation.
     float bme280_t = bme280.readTempC();
-    Serial.println("BME280 device");
-    Serial.print("  Temperature: ");
-    Serial.print(bme280_t, 2);
+    //Serial.println("BME280 device");
+    //Serial.print("  Temperature: ");
+    Serial.println(bme280_t, 2);
     client.publish("sensor/bme280/temperature", String(bme280_t).c_str(), true);
-    Serial.println(" Celsius");
+    //Serial.println(" Celsius");
 
     float bme280_p = bme280.readFloatPressure();
-    Serial.print("  Pressure: ");
-    Serial.print(bme280_p, 2);
+    //Serial.print("  Pressure: ");
+    Serial.println(bme280_p, 2);
     client.publish("sensor/bme280/pressure", String(bme280_p).c_str(), true);
-    Serial.println(" Pa");
+    //Serial.println(" Pa");
 
     float bme280_h = bme280.readFloatHumidity();
-    Serial.print("  %RH: ");
-    Serial.print(bme280_h, 2);
+    //Serial.print("  %RH: ");
+    Serial.println(bme280_h, 2);
     client.publish("sensor/bme280/humidity", String(bme280_h).c_str(), true);
-    Serial.println(" %");
+    //Serial.println(" %");
 
-    Serial.println();
+    //Serial.println();
     blink_green();
 
-    Serial.println("Pausing between search's");
+    //Serial.println("Pausing between search's");
     delay(30000); //delay between finding all the sensors
     return;
   }
 
-  Serial.println("Chip = DS18B20");
+  //Serial.println("Chip = DS18B20");
   ds.reset();
   ds.select(addr);
   ds.write(0x44, 1);// start conversion, with parasite power on at the end
@@ -210,9 +204,9 @@ void loop() {
   }
 
   celsius = (float)raw / 16.0;
-  Serial.print("  Temperature = ");
-  Serial.print(celsius);
-  Serial.println(" Celsius\n");
+  //Serial.print("  Temperature = ");
+  Serial.println(celsius);
+  //Serial.println(" Celsius\n");
 
   //publish the temp now
   char charTopic[] = "sensor/XXXXXXXXXXXXXXXX/temperature";
